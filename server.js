@@ -31,7 +31,6 @@ if (!fs.existsSync(VIDEOS_DIR)) {
 const storage = multer.diskStorage({
   destination: (req, file, cb) => cb(null, VIDEOS_DIR),
   filename: (req, file, cb) => {
-    // Nome único: timestamp + nome original sanitizado
     const ext = path.extname(file.originalname);
     const base = path.basename(file.originalname, ext)
       .replace(/[^a-zA-Z0-9_-]/g, '_')
@@ -54,7 +53,7 @@ const upload = multer({
 });
 
 // -------------------------------------------------------
-// BANCO DE DADOS (Configurado para Aiven + Render)
+// BANCO DE DADOS (Ajustado para Render + Aiven)
 // -------------------------------------------------------
 const db = mysql.createPool({
   host: process.env.DB_HOST || '127.0.0.1',
@@ -62,7 +61,7 @@ const db = mysql.createPool({
   password: process.env.DB_PASSWORD || '',
   database: process.env.DB_NAME || 'saquarema_verdee',
   port: process.env.DB_PORT || 3306,
-  ssl: { rejectUnauthorized: false }, // ESSENCIAL PARA O AIVEN
+  ssl: { rejectUnauthorized: false }, // CRÍTICO: Necessário para conectar ao Aiven
   waitForConnections: true,
   connectionLimit: 10,
   queueLimit: 0,
@@ -71,13 +70,12 @@ const db = mysql.createPool({
 db.getConnection((err, connection) => {
   if (err) {
     console.error('🛑 ERRO: Falha ao conectar ao banco de dados:', err.message);
-    // Não encerra o processo imediatamente no Render para permitir debug
   } else {
     console.log('✅ Pool de conexões ao banco de dados criado com sucesso!');
     connection.release();
   }
 
-  // Tenta criar/verificar coluna de vídeo
+  // Verifica/Cria coluna de vídeo
   db.query(`ALTER TABLE eventos ADD COLUMN IF NOT EXISTS video_url VARCHAR(500) DEFAULT NULL`, (err) => {
     if (err) {
       db.query(`SHOW COLUMNS FROM eventos LIKE 'video_url'`, (err2, rows) => {
@@ -125,15 +123,13 @@ const verifyToken = (req, res, next) => {
 };
 
 // -------------------------------------------------------
-// HEALTH CHECK
+// API ENDPOINTS
 // -------------------------------------------------------
+
 app.get('/api/health', (req, res) => {
   res.json({ status: 'OK', timestamp: new Date().toISOString() });
 });
 
-// -------------------------------------------------------
-// ENDPOINTS PÚBLICOS
-// -------------------------------------------------------
 app.get('/api/eventos', (req, res) => {
   db.query('SELECT * FROM eventos ORDER BY data_evento DESC, hora_evento DESC', (err, results) => {
     if (err) return res.status(500).json({ message: 'Erro ao listar eventos.' });
@@ -150,58 +146,40 @@ app.get('/api/eventos/:id', (req, res) => {
   });
 });
 
-// -------------------------------------------------------
-// UPLOAD DE VÍDEO (PROTEGIDO)
-// -------------------------------------------------------
 app.post('/api/eventos/:id/video', verifyToken, upload.single('video'), (req, res) => {
   const id = parseInt(req.params.id, 10);
   if (!req.file) return res.status(400).json({ message: 'Nenhum arquivo enviado.' });
-
   const videoUrl = `videos/${req.file.filename}`;
-
-  db.query('SELECT video_url FROM eventos WHERE id = ?', [id], (err, results) => {
-    if (!err && results.length > 0 && results[0].video_url) {
-      const oldFile = path.join(__dirname, 'public', results[0].video_url);
-      if (fs.existsSync(oldFile)) fs.unlinkSync(oldFile);
-    }
-
-    db.query('UPDATE eventos SET video_url = ? WHERE id = ?', [videoUrl, id], (err2) => {
-      if (err2) return res.status(500).json({ message: 'Erro ao salvar no banco.' });
-      res.json({ message: 'Vídeo enviado com sucesso!', video_url: videoUrl });
-    });
+  db.query('UPDATE eventos SET video_url = ? WHERE id = ?', [videoUrl, id], (err) => {
+    if (err) return res.status(500).json({ message: 'Erro ao salvar vídeo.' });
+    res.json({ message: 'Vídeo enviado!', video_url: videoUrl });
   });
 });
 
-// REMOVER VÍDEO
 app.delete('/api/eventos/:id/video', verifyToken, (req, res) => {
   const id = parseInt(req.params.id, 10);
   db.query('SELECT video_url FROM eventos WHERE id = ?', [id], (err, results) => {
     if (err || results.length === 0) return res.status(404).json({ message: 'Evento não encontrado.' });
-
     const videoUrl = results[0].video_url;
     if (videoUrl) {
       const filePath = path.join(__dirname, 'public', videoUrl);
       if (fs.existsSync(filePath)) fs.unlinkSync(filePath);
     }
-
     db.query('UPDATE eventos SET video_url = NULL WHERE id = ?', [id], (err2) => {
       if (err2) return res.status(500).json({ message: 'Erro ao remover vídeo.' });
-      res.json({ message: 'Vídeo removido com sucesso.' });
+      res.json({ message: 'Vídeo removido.' });
     });
   });
 });
 
-// -------------------------------------------------------
-// AUTENTICAÇÃO E LOGIN
-// -------------------------------------------------------
 app.post('/api/register-admin', async (req, res) => {
   const { usuario, senha, nome } = req.body;
   const hashedPassword = await bcrypt.hash(senha, 10);
   db.query('INSERT INTO administradores (usuario, senha, nome) VALUES (?, ?, ?)',
     [usuario.trim(), hashedPassword, nome.trim()],
-    (err, result) => {
+    (err) => {
       if (err) return res.status(409).json({ message: 'Usuário já existe.' });
-      res.status(201).json({ message: 'Administrador cadastrado!', id: result.insertId });
+      res.status(201).json({ message: 'Administrador cadastrado!' });
     }
   );
 });
@@ -213,20 +191,17 @@ app.post('/api/login', (req, res) => {
     const admin = results[0];
     if (!bcrypt.compareSync(senha, admin.senha)) return res.status(401).json({ message: 'Usuário ou senha incorretos.' });
     const token = jwt.sign({ usuario: admin.usuario, id: admin.id }, SECRET_KEY, { expiresIn: '8h' });
-    res.json({ token, message: 'Login realizado com sucesso!' });
+    res.json({ token, message: 'Login realizado!' });
   });
 });
 
-// -------------------------------------------------------
-// CRUD PROTEGIDO
-// -------------------------------------------------------
 app.post('/api/eventos', verifyToken, (req, res) => {
   const { nome, descricao, tipo, data_evento, hora_evento } = req.body;
   db.query(
     'INSERT INTO eventos (nome, descricao, tipo, data_evento, hora_evento) VALUES (?, ?, ?, ?, ?)',
     [nome.trim(), descricao.trim(), tipo, data_evento, hora_evento || null],
     (err, result) => {
-      if (err) return res.status(500).json({ message: 'Erro ao cadastrar item.' });
+      if (err) return res.status(500).json({ message: 'Erro ao cadastrar.' });
       res.status(201).json({ id: result.insertId, message: 'Item cadastrado!' });
     }
   );
@@ -239,8 +214,8 @@ app.put('/api/eventos/:id', verifyToken, (req, res) => {
     'UPDATE eventos SET nome = ?, descricao = ?, tipo = ?, data_evento = ?, hora_evento = ? WHERE id = ?',
     [nome, descricao, tipo, data_evento, hora_evento, id],
     (err) => {
-      if (err) return res.status(500).json({ message: 'Falha ao atualizar.' });
-      res.status(200).json({ message: 'Item atualizado!' });
+      if (err) return res.status(500).json({ message: 'Erro ao atualizar.' });
+      res.json({ message: 'Item atualizado!' });
     }
   );
 });
@@ -248,20 +223,20 @@ app.put('/api/eventos/:id', verifyToken, (req, res) => {
 app.delete('/api/eventos/:id', verifyToken, (req, res) => {
   const id = req.params.id;
   db.query('DELETE FROM eventos WHERE id = ?', [id], (err) => {
-    if (err) return res.status(500).json({ message: 'Erro ao excluir item.' });
+    if (err) return res.status(500).json({ message: 'Erro ao excluir.' });
     res.status(204).send();
   });
 });
 
 app.post('/api/manutencao/reset-id', verifyToken, (req, res) => {
   db.query('ALTER TABLE eventos AUTO_INCREMENT = 1', (err) => {
-    if (err) return res.status(500).json({ message: 'Falha ao resetar contador.' });
-    res.json({ message: 'Contador resetado com sucesso.' });
+    if (err) return res.status(500).json({ message: 'Erro ao resetar.' });
+    res.json({ message: 'Contador resetado.' });
   });
 });
 
 // -------------------------------------------------------
-// INICIAR SERVIDOR
+// INICIAR
 // -------------------------------------------------------
 app.listen(PORT, '0.0.0.0', () => {
   console.log(`🚀 Servidor rodando na porta ${PORT}`);
