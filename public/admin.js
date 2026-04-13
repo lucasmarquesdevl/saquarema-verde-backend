@@ -1,4 +1,7 @@
 document.addEventListener('DOMContentLoaded', () => {
+    // URL DO SEU BACKEND NO RENDER
+    const API_BASE_URL = 'https://saquarema-verde-backend.onrender.com';
+    
     const adminToken = localStorage.getItem('adminToken');
     const cadastroForm = document.getElementById('cadastroForm');
     const mensagemFeedback = document.getElementById('mensagem-cadastro');
@@ -16,6 +19,7 @@ document.addEventListener('DOMContentLoaded', () => {
         return datePart;
     };
 
+    // VERIFICAÇÃO DE LOGIN
     if (!adminToken) {
         alert('Sua sessão expirou ou você não está logado. Redirecionando...');
         window.location.href = 'login.html';
@@ -31,13 +35,13 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    // CARREGAR LISTA
+    // CARREGAR LISTA DE EVENTOS
     async function carregarEventosAdmin() {
         if (!listaEventosAdmin) return;
         listaEventosAdmin.innerHTML = '<p>Carregando itens para administração...</p>';
 
         try {
-            const response = await fetch('/api/eventos');
+            const response = await fetch(`${API_BASE_URL}/api/eventos`);
             if (!response.ok) throw new Error('Falha ao buscar itens da lista.');
             const eventos = await response.json();
             listaEventosAdmin.innerHTML = '';
@@ -68,6 +72,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 listaEventosAdmin.appendChild(eventoDiv);
             });
 
+            // Botões de ação
             listaEventosAdmin.querySelectorAll('.btn-editar').forEach(button => {
                 button.addEventListener('click', (e) => preencherFormulario(e.target.dataset.id));
             });
@@ -87,9 +92,12 @@ document.addEventListener('DOMContentLoaded', () => {
     // PREENCHER FORMULÁRIO (MODO EDIÇÃO)
     async function preencherFormulario(id) {
         try {
-            const response = await fetch(`/api/eventos/${id}`);
+            const response = await fetch(`${API_BASE_URL}/api/eventos`);
             if (!response.ok) throw new Error('Item não encontrado.');
-            const evento = await response.json();
+            const eventos = await response.json();
+            const evento = eventos.find(e => e.id == id);
+
+            if (!evento) throw new Error('Evento não localizado na lista.');
 
             document.getElementById('nome').value = evento.nome;
             document.getElementById('descricao').value = evento.descricao;
@@ -104,19 +112,17 @@ document.addEventListener('DOMContentLoaded', () => {
             mensagemFeedback.style.color = '#FFA000';
             mensagemFeedback.style.backgroundColor = '#FFF8E1';
 
-            // Seção de vídeo sempre visível
-
-            // Mostra vídeo atual se existir
+            // Vídeo atual
             const videoContainer = document.getElementById('video-atual-container');
             if (evento.video_url) {
                 videoContainer.style.display = 'block';
                 document.getElementById('video-atual-nome').textContent = evento.video_url.split('/').pop();
-                document.getElementById('video-preview-atual').src = evento.video_url;
+                document.getElementById('video-preview-atual').src = `${API_BASE_URL}/${evento.video_url}`;
             } else {
                 videoContainer.style.display = 'none';
             }
 
-            // Reseta upload
+            // Reset upload area
             document.getElementById('video-selecionado-preview').style.display = 'none';
             document.getElementById('btn-upload-video').style.display = 'none';
             document.getElementById('input-video').value = '';
@@ -144,17 +150,16 @@ document.addEventListener('DOMContentLoaded', () => {
         document.getElementById('input-video').value = '';
     }
 
-    // SUBMISSÃO DO FORMULÁRIO
+    // SUBMISSÃO DO FORMULÁRIO (CADASTRO/EDIÇÃO)
     if (cadastroForm) {
         cadastroForm.addEventListener('submit', async (e) => {
             e.preventDefault();
             mensagemFeedback.textContent = 'Aguarde...';
-            mensagemFeedback.style.backgroundColor = '#E0F2F1';
 
             const formData = new FormData(cadastroForm);
             const data = Object.fromEntries(formData.entries());
             const method = eventoEmEdicaoId ? 'PUT' : 'POST';
-            const url = eventoEmEdicaoId ? `/api/eventos/${eventoEmEdicaoId}` : `/api/eventos`;
+            const url = eventoEmEdicaoId ? `${API_BASE_URL}/api/eventos/${eventoEmEdicaoId}` : `${API_BASE_URL}/api/eventos`;
 
             try {
                 const response = await fetch(url, {
@@ -173,7 +178,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     mensagemFeedback.style.color = '#388E3C';
                     mensagemFeedback.style.backgroundColor = '#E8F5E9';
 
-                    // Se criou novo item e tem vídeo selecionado, faz upload agora
+                    // Se for novo e tiver vídeo
                     if (!eventoEmEdicaoId && videoSelecionado && jsonResponse.id) {
                         await uploadVideoPorId(jsonResponse.id);
                     }
@@ -181,18 +186,14 @@ document.addEventListener('DOMContentLoaded', () => {
                     resetarFormulario();
                     carregarEventosAdmin();
                 } else if (response.status === 401 || response.status === 403) {
-                    alert('Sua sessão expirou. Faça login novamente.');
+                    alert('Sessão expirada.');
                     localStorage.removeItem('adminToken');
                     window.location.href = 'login.html';
                 } else {
                     mensagemFeedback.textContent = `🚨 Erro: ${jsonResponse.message || 'Falha na operação.'}`;
-                    mensagemFeedback.style.color = '#D32F2F';
-                    mensagemFeedback.style.backgroundColor = '#FFEBEE';
                 }
             } catch (error) {
                 mensagemFeedback.textContent = '🚨 Erro de conexão com o servidor.';
-                mensagemFeedback.style.color = '#D32F2F';
-                mensagemFeedback.style.backgroundColor = '#FFEBEE';
             }
         });
     }
@@ -200,69 +201,51 @@ document.addEventListener('DOMContentLoaded', () => {
     // EXCLUIR EVENTO
     async function excluirEvento(id) {
         try {
-            const response = await fetch(`/api/eventos/${id}`, {
+            const response = await fetch(`${API_BASE_URL}/api/eventos/${id}`, {
                 method: 'DELETE',
                 headers: { 'Authorization': `Bearer ${adminToken}` }
             });
             if (response.status === 204) {
                 alert('Item excluído com sucesso!');
                 carregarEventosAdmin();
-            } else if (response.status === 401 || response.status === 403) {
-                alert('Sua sessão expirou.');
-                localStorage.removeItem('adminToken');
-                window.location.href = 'login.html';
             } else {
                 const data = await response.json();
-                alert(`Falha ao excluir: ${data.message || 'Erro desconhecido.'}`);
+                alert(`Erro: ${data.message}`);
             }
         } catch (error) {
             alert('Erro de conexão ao tentar excluir.');
         }
     }
 
-    // ============================================
-    // FUNÇÕES DE VÍDEO (expostas globalmente)
-    // ============================================
-
-    // Quando usuário seleciona um arquivo
+    // FUNÇÕES DE VÍDEO GLOBAIS
     window.selecionarVideo = function(input) {
         const file = input.files[0];
         if (!file) return;
-
         videoSelecionado = file;
         document.getElementById('video-nome-selecionado').textContent = file.name;
         document.getElementById('btn-upload-video').style.display = 'block';
-
-        // Preview do vídeo selecionado
         const url = URL.createObjectURL(file);
         document.getElementById('video-preview-novo').src = url;
         document.getElementById('video-selecionado-preview').style.display = 'block';
     };
 
-    // Upload do vídeo para o evento em edição
     window.uploadVideo = async function() {
         if (!videoSelecionado || !eventoEmEdicaoId) return;
         await uploadVideoPorId(eventoEmEdicaoId);
     };
 
     async function uploadVideoPorId(id) {
-        if (!videoSelecionado) return;
-
         const progressDiv = document.getElementById('upload-progress');
         const progressFill = document.getElementById('progress-fill');
         const progressText = document.getElementById('progress-text');
         const mensagemVideo = document.getElementById('mensagem-video');
 
         progressDiv.style.display = 'block';
-        progressFill.style.width = '0%';
-        progressText.textContent = 'Enviando vídeo...';
-
         const formData = new FormData();
         formData.append('video', videoSelecionado);
 
         return new Promise((resolve) => {
             const xhr = new XMLHttpRequest();
-
             xhr.upload.onprogress = (e) => {
                 if (e.lengthComputable) {
                     const pct = Math.round((e.loaded / e.total) * 100);
@@ -275,53 +258,33 @@ document.addEventListener('DOMContentLoaded', () => {
                 progressDiv.style.display = 'none';
                 if (xhr.status === 200) {
                     mensagemVideo.textContent = '✅ Vídeo enviado com sucesso!';
-                    mensagemVideo.style.color = '#388E3C';
-                    mensagemVideo.style.backgroundColor = '#E8F5E9';
-                    videoSelecionado = null;
-                    document.getElementById('btn-upload-video').style.display = 'none';
-                    carregarEventosAdmin();
-
-                    // Atualiza preview do vídeo atual
                     const data = JSON.parse(xhr.responseText);
-                    document.getElementById('video-preview-atual').src = data.video_url;
-                    document.getElementById('video-atual-nome').textContent = data.video_url.split('/').pop();
+                    document.getElementById('video-preview-atual').src = `${API_BASE_URL}/${data.video_url}`;
                     document.getElementById('video-atual-container').style.display = 'block';
+                    videoSelecionado = null;
+                    carregarEventosAdmin();
                 } else {
                     mensagemVideo.textContent = '🚨 Erro ao enviar vídeo.';
-                    mensagemVideo.style.color = '#D32F2F';
                 }
                 resolve();
             };
 
-            xhr.onerror = () => {
-                progressDiv.style.display = 'none';
-                mensagemVideo.textContent = '🚨 Erro de conexão ao enviar vídeo.';
-                mensagemVideo.style.color = '#D32F2F';
-                resolve();
-            };
-
-            xhr.open('POST', `/api/eventos/${id}/video`);
+            xhr.open('POST', `${API_BASE_URL}/api/eventos/${id}/video`);
             xhr.setRequestHeader('Authorization', `Bearer ${adminToken}`);
             xhr.send(formData);
         });
     }
 
-    // Remover vídeo
     window.removerVideo = async function() {
         if (!eventoEmEdicaoId) return;
-        if (!confirm('Deseja remover o vídeo deste item?')) return;
-
+        if (!confirm('Deseja remover o vídeo?')) return;
         try {
-            const response = await fetch(`/api/eventos/${eventoEmEdicaoId}/video`, {
+            const response = await fetch(`${API_BASE_URL}/api/eventos/${eventoEmEdicaoId}/video`, {
                 method: 'DELETE',
                 headers: { 'Authorization': `Bearer ${adminToken}` }
             });
             if (response.ok) {
                 document.getElementById('video-atual-container').style.display = 'none';
-                document.getElementById('video-preview-atual').src = '';
-                document.getElementById('mensagem-video').textContent = '✅ Vídeo removido.';
-                document.getElementById('mensagem-video').style.color = '#388E3C';
-                document.getElementById('mensagem-video').style.backgroundColor = '#E8F5E9';
                 carregarEventosAdmin();
             }
         } catch {

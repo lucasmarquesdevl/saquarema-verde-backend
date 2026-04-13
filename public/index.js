@@ -1,5 +1,7 @@
 document.addEventListener('DOMContentLoaded', () => {
     const listaEventos = document.getElementById('lista-eventos');
+    // DEFINIMOS A URL DO BACKEND AQUI
+    const API_BASE_URL = 'https://saquarema-verde-backend.onrender.com';
 
     if (!listaEventos) {
         console.error("Elemento 'lista-eventos' não encontrado.");
@@ -16,7 +18,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
     async function carregarEventos() {
         try {
-            const response = await fetch('/api/eventos');
+            // USAMOS A URL COMPLETA PARA NÃO DAR ERRO 404
+            const response = await fetch(saquarema-verde-backend.onrender.com/api/eventos);
+            
             if (!response.ok) throw new Error(`Erro ao carregar dados: ${response.status}`);
 
             const eventos = await response.json();
@@ -47,12 +51,11 @@ document.addEventListener('DOMContentLoaded', () => {
                     `;
                 }
 
-                // Bloco de vídeo — só aparece se o evento tiver vídeo
                 let videoHtml = '';
                 if (evento.video_url) {
                     videoHtml = `
                         <div class="card-video">
-                            <button class="btn-play-video" onclick="toggleVideo(this, '${evento.video_url}')">
+                            <button class="btn-play-video" onclick="toggleVideo(this, '${API_BASE_URL}/${evento.video_url}')">
                                 ▶️ Assistir Vídeo
                             </button>
                             <div class="video-container" style="display:none; margin-top:12px">
@@ -61,7 +64,7 @@ document.addEventListener('DOMContentLoaded', () => {
                                     style="width:100%; border-radius:8px; max-height:280px"
                                     preload="metadata"
                                 >
-                                    <source src="${evento.video_url}" type="video/mp4">
+                                    <source src="${API_BASE_URL}/${evento.video_url}" type="video/mp4">
                                     Seu navegador não suporta vídeos.
                                 </video>
                             </div>
@@ -89,8 +92,8 @@ document.addEventListener('DOMContentLoaded', () => {
     carregarEventos();
 });
 
-// Mostra/oculta o player de vídeo no card
-function toggleVideo(btn, videoUrl) {
+// Função global para o botão de vídeo
+window.toggleVideo = function(btn, videoUrl) {
     const container = btn.nextElementSibling;
     const video = container.querySelector('video');
 
@@ -105,4 +108,4 @@ function toggleVideo(btn, videoUrl) {
         video.pause();
         video.src = '';
     }
-}
+};

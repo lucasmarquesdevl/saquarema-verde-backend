@@ -1,8 +1,11 @@
 document.addEventListener('DOMContentLoaded', () => {
     const loginForm = document.getElementById('loginForm');
     const mensagemErro = document.getElementById('mensagem-erro');
+    
+    // URL DO SEU BACKEND NO RENDER
+    const API_BASE_URL = 'https://saquarema-verde-backend.onrender.com';
 
-    // Se o admin tentar acessar a página de login já autenticado
+    // Se o admin tentar acessar a página de login já autenticado, manda direto pro painel
     if (localStorage.getItem('adminToken')) {
         window.location.href = 'admin.html';
         return;
@@ -11,14 +14,17 @@ document.addEventListener('DOMContentLoaded', () => {
     if (loginForm) {
         loginForm.addEventListener('submit', async (e) => {
             e.preventDefault();
-            mensagemErro.textContent = ''; // Limpa a mensagem de erro
+            
+            // Limpa mensagens e dá feedback de carregamento
+            mensagemErro.textContent = 'Verificando credenciais...'; 
+            mensagemErro.style.color = '#00796B';
 
             const usuario = document.getElementById('usuario').value;
             const senha = document.getElementById('senha').value;
 
             try {
-                // Rota já estava relativa, o que funciona bem em qualquer ambiente (OLD/NEW)
-                const response = await fetch('/api/login', { 
+                // Faz a chamada para o Render usando a URL completa
+                const response = await fetch(`${API_BASE_URL}/api/login`, { 
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
@@ -29,17 +35,20 @@ document.addEventListener('DOMContentLoaded', () => {
                 const data = await response.json();
 
                 if (response.ok) {
-                    // Login bem-sucedido
-                    localStorage.setItem('adminToken', data.token); // SALVA O TOKEN
-                    window.location.href = 'admin.html'; // Redireciona para o painel
+                    // Login bem-sucedido: Salva o token e redireciona
+                    localStorage.setItem('adminToken', data.token);
+                    window.location.href = 'admin.html';
                 } else {
-                    // Falha no login
-                    mensagemErro.textContent = data.message || 'Erro ao tentar fazer login.';
+                    // Falha no login (usuário ou senha errados)
+                    mensagemErro.textContent = data.message || 'Usuário ou senha incorretos.';
+                    mensagemErro.style.color = 'red';
                 }
 
             } catch (error) {
                 console.error('Erro de rede:', error);
-                mensagemErro.textContent = 'Erro de conexão com o servidor.';
+                // Se o Render estiver "dormindo", pode cair aqui no primeiro segundo
+                mensagemErro.textContent = 'Erro de conexão. O servidor pode estar iniciando, tente novamente em instantes.';
+                mensagemErro.style.color = 'red';
             }
         });
     }
