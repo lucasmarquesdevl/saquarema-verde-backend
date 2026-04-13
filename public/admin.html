@@ -1,0 +1,169 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tela Admin - Gerenciamento de Itens</title>
+    <link rel="stylesheet" href="styles.css">
+    <style>
+        .video-upload-area {
+            border: 2px dashed #B2DFDB;
+            border-radius: 8px;
+            padding: 20px;
+            text-align: center;
+            background: #f9f9f9;
+            cursor: pointer;
+            transition: border-color 0.3s;
+        }
+        .video-upload-area:hover { border-color: #00796B; }
+        .video-upload-area input[type="file"] { display: none; }
+        .video-upload-label { cursor: pointer; color: #00796B; font-weight: bold; }
+        .video-preview { margin-top: 12px; }
+        .video-preview video { width: 100%; max-height: 200px; border-radius: 6px; }
+        .video-atual { 
+            margin-top: 10px; 
+            padding: 10px 14px; 
+            background: #E0F2F1; 
+            border-radius: 6px; 
+            display: flex; 
+            justify-content: space-between; 
+            align-items: center;
+            font-size: 0.9em;
+        }
+        .btn-remover-video {
+            background: #D32F2F;
+            color: white;
+            border: none;
+            padding: 4px 12px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 0.85em;
+            font-weight: bold;
+        }
+        .upload-progress {
+            display: none;
+            margin-top: 10px;
+        }
+        .progress-bar {
+            width: 100%;
+            height: 8px;
+            background: #e0e0e0;
+            border-radius: 4px;
+            overflow: hidden;
+        }
+        .progress-fill {
+            height: 100%;
+            background: #00796B;
+            width: 0%;
+            transition: width 0.3s;
+            border-radius: 4px;
+        }
+        .progress-text { font-size: 0.8em; color: #666; margin-top: 4px; text-align: center; }
+    </style>
+</head>
+<body>
+    <header class="header">
+        <h1 class="header-title">Tela Admin - Gerenciamento</h1>
+        <nav>
+            <a href="index.html" class="btn-secondary">← Voltar para o Início</a>
+            <button id="logoutBtn" class="btn-logout">Sair</button>
+        </nav>
+    </header>
+
+    <main class="container">
+        
+        <section class="admin-section">
+            <h2 id="formTitle">➕ Inserir Novo Item</h2> 
+            
+            <form id="cadastroForm" class="form"> 
+                <div class="form-group">
+                    <label for="nome">Nome do Item:</label>
+                    <input type="text" id="nome" name="nome" required>
+                </div>
+                <div class="form-group">
+                    <label for="descricao">Descrição:</label>
+                    <textarea id="descricao" name="descricao" rows="4" required></textarea>
+                </div>
+                
+                <div class="form-group">
+                    <label for="data_evento">Data (Opcional):</label>
+                    <input type="date" id="data_evento" name="data_evento">
+                </div>
+
+                <div class="form-group">
+                    <label for="hora_evento">Hora (Opcional):</label>
+                    <input type="time" id="hora_evento" name="hora_evento">
+                </div>
+
+                <div class="form-group">
+                    <label for="tipo">Tipo:</label>
+                    <select id="tipo" name="tipo" required> 
+                        <option value="">Selecione o Tipo</option>
+                        <option value="Praia">Praia</option>
+                        <option value="Trilha">Trilha</option>
+                        <option value="Ponto Turístico">Ponto Turístico</option>
+                        <option value="Evento">Evento</option>
+                    </select>
+                </div>
+
+                <!-- VÍDEO OPCIONAL — sempre visível no formulário -->
+                <div class="form-group" id="secao-video">
+                    <label>🎬 Vídeo (Opcional):</label>
+                    <p style="color:#888; font-size:0.85em; margin-bottom:8px">Formatos aceitos: MP4, WebM, MOV. Tamanho máximo: 500MB.</p>
+
+                    <!-- Vídeo atual (só aparece no modo edição) -->
+                    <div id="video-atual-container" style="display:none">
+                        <div class="video-atual">
+                            <span>🎬 Vídeo atual: <strong id="video-atual-nome">video.mp4</strong></span>
+                            <button type="button" class="btn-remover-video" onclick="removerVideo()">🗑️ Remover</button>
+                        </div>
+                        <div class="video-preview" style="margin-top:10px">
+                            <video id="video-preview-atual" controls></video>
+                        </div>
+                    </div>
+
+                    <!-- Área de upload -->
+                    <div class="video-upload-area" onclick="document.getElementById('input-video').click()" style="margin-top:8px">
+                        <input type="file" id="input-video" accept="video/mp4,video/webm,video/ogg,video/quicktime" onchange="selecionarVideo(this)">
+                        <p>📁 <label class="video-upload-label">Clique aqui para selecionar um vídeo</label></p>
+                        <p style="color:#999; font-size:0.85em; margin-top:4px">MP4, WebM, MOV — máx. 500MB</p>
+                    </div>
+
+                    <div id="video-selecionado-preview" style="display:none; margin-top:12px">
+                        <p style="color:#00796B; font-weight:bold; margin-bottom:8px">✅ Arquivo selecionado: <span id="video-nome-selecionado"></span></p>
+                        <video id="video-preview-novo" controls style="width:100%; max-height:200px; border-radius:6px"></video>
+                    </div>
+
+                    <div class="upload-progress" id="upload-progress">
+                        <div class="progress-bar"><div class="progress-fill" id="progress-fill"></div></div>
+                        <p class="progress-text" id="progress-text">Enviando vídeo...</p>
+                    </div>
+
+                    <p id="mensagem-video" class="feedback-message" style="margin-top:10px"></p>
+                </div>
+
+                <button type="submit" class="btn-submit">Cadastrar Item</button>
+                
+                <p id="mensagem-cadastro" class="feedback-message"></p>
+            </form>
+        </section>
+        
+        <hr>
+        
+        <section class="admin-section">
+            <h2>🗑️ Gerenciar e Excluir Itens</h2>
+            
+            <div id="lista-eventos-admin" class="listagem-container">
+                <p>Carregando itens...</p>
+            </div>
+        </section>
+        
+    </main>
+
+    <footer class="footer">
+        <p>&copy; 2025 Saqua Verde. Painel Administrativo.</p>
+    </footer>
+
+    <script src="admin.js"></script>
+</body>
+</html>
