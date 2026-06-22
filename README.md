@@ -39,7 +39,7 @@ O Saquarema Verde é uma plataforma para catalogar e divulgar eventos, trilhas, 
 ## 📁 Estrutura de Pastas para os Outros Alunos (Entrega da Faculdade)
 - **Requisitos:** (Adicionar PDF de Requisitos aqui)
 - **Apresentação:** (Adicionar slides aqui)
-- **Protótipos:** (Adicionar links do Figma ou imagens aqui)
+- **Protótipos:** [Ver Telas e Protótipos Web (PROTOTIPOS.md)](./PROTOTIPOS.md)
 
 ## 👤 Autor
 - **Lucas Trindade Marques** e Equipe.
