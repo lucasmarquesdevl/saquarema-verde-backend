@@ -129,4 +129,4 @@ O projeto incentiva estudantes, profissionais e entusiastas a desenvolvem soluç
 ---
 **Entregáveis:**
 - **Protótipos:** [Ver Telas e Protótipos Web (PROTOTIPOS.md)](./PROTOTIPOS.md)
-- **Apresentação:** (Adicionar slides em PDF aqui na raiz do projeto)
+- **Apresentação:** [Slides da Apresentação (Apresentacao.pdf)](./Apresentacao.pdf)
