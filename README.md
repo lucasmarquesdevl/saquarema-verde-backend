@@ -37,7 +37,7 @@ O Saquarema Verde é uma plataforma para catalogar e divulgar eventos, trilhas, 
    - **Página Inicial Web:** `http://localhost:8080/index.html`
 
 ## 📁 Estrutura de Pastas para os Outros Alunos (Entrega da Faculdade)
-- **Requisitos:** (Adicionar PDF de Requisitos aqui)
+- **Requisitos:** [Documento Oficial de Requisitos (Requisitos.md)](./Requisitos.md)
 - **Apresentação:** (Adicionar slides aqui)
 - **Protótipos:** [Ver Telas e Protótipos Web (PROTOTIPOS.md)](./PROTOTIPOS.md)
 
