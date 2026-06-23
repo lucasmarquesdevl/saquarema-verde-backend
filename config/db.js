@@ -1,14 +1,6 @@
-// ============================================================
-// config/db.js — Configuração e conexão com o banco de dados
-// ============================================================
-// Responsabilidade: criar e exportar o pool de conexões MySQL.
-// Mantendo a configuração separada do resto da aplicação,
-// facilitamos testes e troca de banco de dados no futuro.
-// ============================================================
 const mysql = require('mysql2');
 
-// Todas as credenciais vêm de variáveis de ambiente (.env)
-// NUNCA escreva senhas ou chaves diretamente no código!
+
 const db = mysql.createPool({
     host:            process.env.DB_HOST     || 'localhost',
     port:            process.env.DB_PORT     || 3306,

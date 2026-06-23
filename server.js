@@ -1,15 +1,3 @@
-// ============================================================
-// server.js — Saquarema Verde Backend (Ponto de Entrada)
-// ============================================================
-// Este arquivo é o coração da aplicação. Ele:
-// 1. Carrega as variáveis de ambiente do arquivo .env
-// 2. Configura os middlewares globais (cors, body-parser, etc.)
-// 3. Registra as rotas da API (importadas de /routes)
-// 4. Inicia o servidor na porta configurada
-// ============================================================
-
-// ✅ PASSO 1: Carrega as variáveis de ambiente ANTES de qualquer outra coisa.
-//    As variáveis ficam em process.env.NOME_DA_VARIAVEL
 require('dotenv').config();
 
 const express     = require('express');
@@ -26,13 +14,6 @@ const authRouter    = require('./routes/auth');    // Rotas de login e criação
 const app  = express();
 const PORT = process.env.PORT || 8080;
 
-// -------------------------------------------------------
-// MIDDLEWARES GLOBAIS
-// -------------------------------------------------------
-
-// CORS: controla quais origens podem acessar esta API.
-// Em desenvolvimento, CORS_ORIGIN=* libera tudo.
-// Em produção, configure CORS_ORIGIN=https://seusite.com no .env
 app.use(cors({
     origin: process.env.CORS_ORIGIN || '*',
 }));
@@ -40,17 +21,12 @@ app.use(cors({
 app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: true }));
 
-// Serve os arquivos estáticos do painel web (HTML, CSS, JS)
 app.use(express.static(path.join(__dirname, 'public')));
 
-// Serve os vídeos enviados pelo painel web
+
 app.use('/videos', express.static(path.join(__dirname, 'public', 'videos')));
 
-// -------------------------------------------------------
-// RATE LIMITING — Proteção contra força bruta no login
-// -------------------------------------------------------
-// Limita a rota de login a no máximo 10 tentativas por IP a cada 15 minutos.
-// Isso impede ataques de força bruta na senha do administrador.
+
 const loginLimiter = rateLimit({
     windowMs: 15 * 60 * 1000, // 15 minutos
     max: 10,                   // máximo de 10 tentativas
